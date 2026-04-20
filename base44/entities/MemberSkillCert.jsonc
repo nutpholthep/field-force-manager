@@ -1,0 +1,60 @@
+{
+  "name": "MemberSkillCert",
+  "type": "object",
+  "properties": {
+    "technician_id": {
+      "type": "string",
+      "description": "Technician entity ID (the slot)"
+    },
+    "technician_name": {
+      "type": "string",
+      "description": "Technician full name (denormalized)"
+    },
+    "skill_id": {
+      "type": "string",
+      "description": "Skill entity ID"
+    },
+    "skill_name": {
+      "type": "string",
+      "description": "Skill name"
+    },
+    "cert_file_url": {
+      "type": "string",
+      "description": "Uploaded certificate file URL"
+    },
+    "cert_file_name": {
+      "type": "string",
+      "description": "Original file name"
+    },
+    "issued_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Certificate issued date"
+    },
+    "expiry_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Certificate expiry date (optional)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected",
+        "expired"
+      ],
+      "default": "pending",
+      "description": "Verification status"
+    },
+    "reviewer_note": {
+      "type": "string",
+      "description": "Admin reviewer note"
+    }
+  },
+  "required": [
+    "technician_id",
+    "skill_id",
+    "skill_name"
+  ]
+}

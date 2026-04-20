@@ -1,0 +1,90 @@
+# iCrewForce Field Force Manager — local stack
+#
+# Services:
+#   postgres : PostgreSQL 16 (with healthcheck)
+#   api      : NestJS + Prisma backend (auto-runs `prisma migrate deploy` + seed on boot)
+#   web      : Next.js 16 frontend (standalone build)
+#
+# Quick start:
+#   docker compose up --build
+#   open http://localhost:3000          (web)
+#   open http://localhost:3001/api/docs (Swagger)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ffm-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ffm
+    ports:
+      - "5432:5432"
+    volumes:
+      - ffm-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ffm"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - ffm
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: ffm-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ffm?schema=public
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-string}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me-to-another-long-random-string}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+    ports:
+      - "3001:3001"
+    # Run migrations + seed (idempotent), then boot Nest. ts-node + prisma are runtime deps.
+    command: >
+      sh -c "npx prisma migrate deploy &&
+             (node -r ts-node/register prisma/seed.ts || true) &&
+             node dist/main.js"
+    networks:
+      - ffm
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        # NEXT_PUBLIC_* are baked at build time; this URL is used by the browser.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Field Force Manager}
+    container_name: ffm-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      # Used by next.config.ts rewrites for server-side proxy via docker network
+      NEXT_PUBLIC_API_URL: http://api:3001
+    ports:
+      - "3000:3000"
+    networks:
+      - ffm
+
+networks:
+  ffm:
+    driver: bridge
+
+volumes:
+  ffm-postgres-data:

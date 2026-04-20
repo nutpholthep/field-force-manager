@@ -1,0 +1,642 @@
+// Field Force Manager — Prisma schema
+// Migrated from Base44 entity definitions
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// Enums
+// -----------------------------------------------------------------------------
+
+enum UserRole {
+  admin
+  dispatcher
+  supervisor
+  technician
+  viewer
+}
+
+enum WorkOrderStatus {
+  created
+  assigned
+  accepted
+  traveling
+  on_site
+  working
+  stuck
+  completed
+  cancelled
+}
+
+enum WorkOrderPriority {
+  critical
+  high
+  medium
+  low
+}
+
+enum WorkOrderServiceType {
+  installation
+  maintenance
+  repair
+  inspection
+  emergency
+  upgrade
+  removal
+}
+
+enum SlaRisk {
+  low
+  medium
+  high
+}
+
+enum TechnicianStatus {
+  active
+  inactive
+  on_leave
+  suspended
+}
+
+enum TechnicianAvailability {
+  available
+  busy
+  offline
+  break
+}
+
+enum AttendanceStatus {
+  scheduled
+  checked_in
+  checked_out
+  absent
+}
+
+enum MemberSkillCertStatus {
+  pending
+  approved
+  rejected
+  expired
+}
+
+enum ProjectStatus {
+  planning
+  in_progress
+  on_hold
+  completed
+  cancelled
+}
+
+enum StuckReasonCategory {
+  parts
+  access
+  technical
+  customer
+  weather
+  other
+}
+
+enum CustomerType {
+  residential
+  commercial
+  industrial
+  government
+}
+
+enum SiteType {
+  office
+  warehouse
+  factory
+  retail
+  residential
+  data_center
+  outdoor
+}
+
+enum ActiveStatus {
+  active
+  inactive
+}
+
+enum MaterialItemType {
+  item
+  service
+}
+
+enum DurationUnit {
+  minutes
+  hours
+  days
+}
+
+enum NotificationType {
+  info
+  warning
+  error
+  success
+}
+
+// -----------------------------------------------------------------------------
+// Auth / User
+// -----------------------------------------------------------------------------
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  password_hash  String
+  full_name      String
+  role           UserRole  @default(viewer)
+  phone          String?
+  avatar_url     String?
+  is_active      Boolean   @default(true)
+  last_login_at  DateTime?
+  refresh_token  String?
+  created_date   DateTime  @default(now())
+  updated_date   DateTime  @updatedAt
+
+  @@index([email])
+}
+
+// -----------------------------------------------------------------------------
+// Master / catalog
+// -----------------------------------------------------------------------------
+
+model Customer {
+  id             String       @id @default(cuid())
+  name           String
+  contact_person String?
+  email          String?
+  phone          String?
+  address        String?
+  notes          String?
+  total_work_orders Int       @default(0)
+  latitude       Float?
+  longitude      Float?
+  type           CustomerType @default(commercial)
+  created_date   DateTime     @default(now())
+  updated_date   DateTime     @updatedAt
+
+  sites    Site[]
+  projects Project[]
+}
+
+model Site {
+  id                  String       @id @default(cuid())
+  name                String
+  customer_id         String?
+  customer_name       String?
+  address             String?
+  zone_id             String?
+  zone_name           String?
+  site_type           SiteType     @default(office)
+  equipment           String[]
+  access_instructions String?
+  status              ActiveStatus @default(active)
+  latitude            Float?
+  longitude           Float?
+  created_date        DateTime     @default(now())
+  updated_date        DateTime     @updatedAt
+
+  customer Customer? @relation(fields: [customer_id], references: [id], onDelete: SetNull)
+  zone     Zone?     @relation(fields: [zone_id], references: [id], onDelete: SetNull)
+}
+
+model Zone {
+  id                String   @id @default(cuid())
+  name              String
+  code              String?
+  description       String?
+  color             String   @default("#3b82f6")
+  polygon           Json     @default("[]")
+  provinces         Json     @default("[]")
+  technician_count  Int      @default(0)
+  avg_daily_jobs    Float?
+  center_latitude   Float?
+  center_longitude  Float?
+  agent_id          String?
+  agent_name        String?
+  is_active         Boolean  @default(true)
+  created_date      DateTime @default(now())
+  updated_date      DateTime @updatedAt
+
+  sites       Site[]
+  technicians Technician[]
+  teams       Team[]
+}
+
+model Skill {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  category     String?
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+
+  certs MemberSkillCert[]
+}
+
+model PriorityMaster {
+  id             String       @id @default(cuid())
+  name           String
+  code           String?
+  color          String       @default("#3b82f6")
+  duration_value Int          @default(4)
+  duration_unit  DurationUnit @default(hours)
+  description    String?
+  is_active      Boolean      @default(true)
+  created_date   DateTime     @default(now())
+  updated_date   DateTime     @updatedAt
+}
+
+model StuckReason {
+  id           String              @id @default(cuid())
+  name         String
+  code         String              @unique
+  category     StuckReasonCategory @default(other)
+  description  String?
+  color        String              @default("#f59e0b")
+  is_active    Boolean             @default(true)
+  created_date DateTime            @default(now())
+  updated_date DateTime            @updatedAt
+}
+
+model MaterialCategory {
+  id           String     @id @default(cuid())
+  name         String
+  code         String     @unique
+  description  String?
+  color        String     @default("#3b82f6")
+  is_active    Boolean    @default(true)
+  created_date DateTime   @default(now())
+  updated_date DateTime   @updatedAt
+
+  materials Material[]
+}
+
+model Material {
+  id            String           @id @default(cuid())
+  item_number   String           @unique
+  item_name     String
+  description   String?
+  category_id   String?
+  category_name String?
+  item_group    String?
+  item_type     MaterialItemType @default(item)
+  unit          String?
+  warehouse     String?
+  stock_qty     Float            @default(0)
+  min_stock_qty Float            @default(0)
+  cost_price    Float?
+  keywords      String[]
+  is_active     Boolean          @default(true)
+  created_date  DateTime         @default(now())
+  updated_date  DateTime         @updatedAt
+
+  category      MaterialCategory?   @relation(fields: [category_id], references: [id], onDelete: SetNull)
+  workOrderMats WorkOrderMaterial[]
+}
+
+model ServiceType {
+  id                    String   @id @default(cuid())
+  name                  String
+  code                  String?
+  description           String?
+  required_skill_ids    String[]
+  allowed_priority_ids  String[]
+  default_priority_id   String?
+  default_priority      String?
+  default_duration_hrs  Float    @default(2)
+  steps                 Json     @default("[]")
+  causes                Json     @default("[]")
+  is_active             Boolean  @default(true)
+  created_date          DateTime @default(now())
+  updated_date          DateTime @updatedAt
+}
+
+model Workflow {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  nodes        Json     @default("[]")
+  edges        Json     @default("[]")
+  version      String?
+  is_active    Boolean  @default(true)
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+
+  projects Project[]
+}
+
+model TeamRole {
+  id           String   @id @default(cuid())
+  name         String
+  code         String   @unique
+  color        String?
+  description  String?
+  is_active    Boolean  @default(true)
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+}
+
+model Team {
+  id           String   @id @default(cuid())
+  name         String
+  code         String?
+  description  String?
+  zone_id      String?
+  zone_name    String?
+  is_active    Boolean  @default(true)
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+
+  zone        Zone?        @relation(fields: [zone_id], references: [id], onDelete: SetNull)
+  technicians Technician[]
+}
+
+// -----------------------------------------------------------------------------
+// Technicians
+// -----------------------------------------------------------------------------
+
+model Technician {
+  id                       String                 @id @default(cuid())
+  technician_code          String                 @unique
+  full_name                String
+  email                    String?
+  phone                    String?
+  photo_url                String?
+  linked_user_id           String?
+  linked_user_email        String?
+  status                   TechnicianStatus       @default(active)
+  team_role                String?
+  team_role_name           String?
+  team_id                  String?
+  team_name                String?
+  home_latitude            Float?
+  home_longitude           Float?
+  current_latitude         Float?
+  current_longitude        Float?
+  zone_id                  String?
+  zone_name                String?
+  skills                   String[]
+  certifications           String[]
+  max_daily_jobs           Int                    @default(6)
+  current_daily_jobs       Int                    @default(0)
+  avg_completion_time_hrs  Float?
+  sla_compliance_rate      Float?
+  customer_rating          Float?
+  jobs_completed_total     Int                    @default(0)
+  performance_score        Float?
+  availability             TechnicianAvailability @default(available)
+  working_hours_start      String                 @default("08:00")
+  working_hours_end        String                 @default("17:00")
+  hourly_rate              Float?
+  created_date             DateTime               @default(now())
+  updated_date             DateTime               @updatedAt
+
+  team        Team?                  @relation(fields: [team_id], references: [id], onDelete: SetNull)
+  zone        Zone?                  @relation(fields: [zone_id], references: [id], onDelete: SetNull)
+  skillCerts  MemberSkillCert[]
+  attendance  TechnicianAttendance[]
+  workOrders  WorkOrder[]
+  projects    Project[]
+}
+
+model MemberSkillCert {
+  id              String                @id @default(cuid())
+  technician_id   String
+  technician_name String?
+  skill_id        String
+  skill_name      String
+  cert_file_url   String?
+  cert_file_name  String?
+  issued_date     DateTime?
+  expiry_date     DateTime?
+  status          MemberSkillCertStatus @default(pending)
+  reviewer_note   String?
+  created_date    DateTime              @default(now())
+  updated_date    DateTime              @updatedAt
+
+  technician Technician @relation(fields: [technician_id], references: [id], onDelete: Cascade)
+  skill      Skill      @relation(fields: [skill_id], references: [id], onDelete: Cascade)
+
+  @@index([technician_id])
+}
+
+model TechnicianAttendance {
+  id               String           @id @default(cuid())
+  technician_id    String
+  technician_name  String?
+  technician_code  String?
+  date             DateTime         @db.Date
+  status           AttendanceStatus @default(scheduled)
+  check_in_time    String?
+  check_out_time   String?
+  check_in_at      DateTime?
+  check_out_at     DateTime?
+  work_hours       Float?
+  scheduled_jobs   Int              @default(0)
+  notes            String?
+  created_date     DateTime         @default(now())
+  updated_date     DateTime         @updatedAt
+
+  technician Technician @relation(fields: [technician_id], references: [id], onDelete: Cascade)
+
+  @@unique([technician_id, date])
+  @@index([date])
+}
+
+// -----------------------------------------------------------------------------
+// Work Orders
+// -----------------------------------------------------------------------------
+
+model WorkOrder {
+  id                        String               @id @default(cuid())
+  order_number              String               @unique
+  title                     String
+  description               String?
+  status                    WorkOrderStatus      @default(created)
+  stuck_reason_id           String?
+  stuck_reason_name         String?
+  stuck_note                String?
+  priority                  WorkOrderPriority    @default(medium)
+  service_type              WorkOrderServiceType @default(maintenance)
+  required_skills           String[]
+  customer_name             String?
+  customer_id               String?
+  site_name                 String?
+  site_id                   String?
+  site_latitude             Float?
+  site_longitude            Float?
+  zone_name                 String?
+  assigned_technician_id    String?
+  assigned_technician_name  String?
+  sla_due                   DateTime?
+  sla_risk                  SlaRisk              @default(low)
+  scheduled_date            DateTime?            @db.Date
+  scheduled_time            String?
+  estimated_duration_hrs    Float                @default(2)
+  actual_duration_hrs       Float?
+  started_at                DateTime?
+  completed_at              DateTime?
+  travel_distance_km        Float?
+  labor_cost                Float?
+  equipment_cost            Float?
+  travel_cost               Float?
+  total_cost                Float?
+  customer_rating           Float?
+  notes                     String?
+  attachments               String[]
+  dispatch_score            Float?
+  project_id                String?
+  project_step_id           String?
+  created_date              DateTime             @default(now())
+  updated_date              DateTime             @updatedAt
+
+  technician Technician?         @relation(fields: [assigned_technician_id], references: [id], onDelete: SetNull)
+  project    Project?            @relation(fields: [project_id], references: [id], onDelete: SetNull)
+  materials  WorkOrderMaterial[]
+  stepData   WorkOrderStepData[]
+
+  @@index([status])
+  @@index([assigned_technician_id])
+  @@index([project_id])
+  @@index([scheduled_date])
+}
+
+model WorkOrderMaterial {
+  id                String   @id @default(cuid())
+  work_order_id     String
+  work_order_number String?
+  material_id       String
+  item_number       String?
+  item_name         String?
+  unit              String?
+  quantity_used     Float    @default(1)
+  cost_price        Float?
+  total_cost        Float?
+  notes             String?
+  created_date      DateTime @default(now())
+  updated_date      DateTime @updatedAt
+
+  workOrder WorkOrder @relation(fields: [work_order_id], references: [id], onDelete: Cascade)
+  material  Material  @relation(fields: [material_id], references: [id], onDelete: Restrict)
+
+  @@index([work_order_id])
+}
+
+model WorkOrderStepData {
+  id                String   @id @default(cuid())
+  work_order_id     String
+  work_order_number String?
+  step_id           String
+  step_name         String?
+  task_id           String
+  task_label        String?
+  task_type         String?
+  value_text        String?
+  value_boolean     Boolean?
+  value_file_url    String?
+  value_file_name   String?
+  value_materials   Json     @default("[]")
+  created_date      DateTime @default(now())
+  updated_date      DateTime @updatedAt
+
+  workOrder WorkOrder @relation(fields: [work_order_id], references: [id], onDelete: Cascade)
+
+  @@unique([work_order_id, step_id, task_id])
+  @@index([work_order_id])
+}
+
+// -----------------------------------------------------------------------------
+// Projects
+// -----------------------------------------------------------------------------
+
+model Project {
+  id                       String            @id @default(cuid())
+  project_number           String?           @unique
+  name                     String
+  description              String?
+  customer_id              String?
+  customer_name            String?
+  site_id                  String?
+  site_name                String?
+  workflow_id              String
+  workflow_name            String?
+  current_step_id          String?
+  current_step_name        String?
+  status                   ProjectStatus     @default(planning)
+  priority                 WorkOrderPriority @default(medium)
+  assigned_technician_id   String?
+  assigned_technician_name String?
+  start_date               DateTime?         @db.Date
+  target_date              DateTime?         @db.Date
+  completed_date           DateTime?         @db.Date
+  completed_steps          String[]
+  step_history             Json              @default("[]")
+  notes                    String?
+  tags                     String[]
+  created_date             DateTime          @default(now())
+  updated_date             DateTime          @updatedAt
+
+  customer   Customer?   @relation(fields: [customer_id], references: [id], onDelete: SetNull)
+  workflow   Workflow    @relation(fields: [workflow_id], references: [id], onDelete: Restrict)
+  technician Technician? @relation(fields: [assigned_technician_id], references: [id], onDelete: SetNull)
+  workOrders WorkOrder[]
+
+  @@index([status])
+  @@index([workflow_id])
+}
+
+// -----------------------------------------------------------------------------
+// Notifications & AI agents
+// -----------------------------------------------------------------------------
+
+model Notification {
+  id           String           @id @default(cuid())
+  title        String
+  message      String
+  type         NotificationType @default(info)
+  is_read      Boolean          @default(false)
+  user_id      String?
+  target_user  String?
+  link         String?
+  category     String?
+  related_entity_type String?
+  related_entity_id String?
+  meta         Json?
+  created_date DateTime         @default(now())
+  updated_date DateTime         @updatedAt
+
+  @@index([user_id, is_read])
+}
+
+model AIAgent {
+  id                    String   @id @default(cuid())
+  name                  String
+  description           String?
+  model                 String?
+  llm_provider          String?
+  llm_model             String?
+  llm_api_url           String?
+  llm_api_key           String?
+  notification_email    String?
+  sla_warning_hours     Int?
+  check_interval_minutes Int?
+  data_skills           String[]
+  can_send_email        Boolean  @default(false)
+  last_run_at           DateTime?
+  last_run_summary      String?
+  system_prompt         String?
+  config                Json     @default("{}")
+  assigned_zone_ids     String[]
+  assigned_zone_names   String[]
+  is_active             Boolean  @default(true)
+  created_date          DateTime @default(now())
+  updated_date          DateTime @updatedAt
+}

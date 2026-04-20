@@ -1,0 +1,44 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { ServiceType } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
+
+import { CreateServiceTypeDto, UpdateServiceTypeDto } from './dto/service-type.dto';
+import { parseSort } from '../../common/utils/query.util';
+
+
+@Injectable()
+export class ServiceTypesService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async list(opts: { sort?: string; limit?: number; offset?: number; where?: Record<string, unknown> } = {}): Promise<ServiceType[]> {
+    const { sort, limit = 100, offset = 0, where } = opts;
+    return this.prisma.serviceType.findMany({
+      where,
+      orderBy: parseSort(sort) ?? { created_date: 'desc' },
+      take: Math.min(Math.max(limit, 1), 1000),
+      skip: offset,
+    }) as unknown as Promise<ServiceType[]>;
+  }
+
+  async count(where?: Record<string, unknown>): Promise<number> {
+    return this.prisma.serviceType.count({ where });
+  }
+
+  async findById(id: string): Promise<ServiceType> {
+    const result = await this.prisma.serviceType.findUnique({ where: { id } as any });
+    if (!result) throw new NotFoundException(`TypesService ${id} not found`);
+    return result as unknown as ServiceType;
+  }
+
+  async create(data: CreateServiceTypeDto): Promise<ServiceType> {
+    return this.prisma.serviceType.create({ data: data as any }) as unknown as ServiceType;
+  }
+
+  async update(id: string, data: UpdateServiceTypeDto): Promise<ServiceType> {
+    return this.prisma.serviceType.update({ where: { id } as any, data: data as any }) as unknown as ServiceType;
+  }
+
+  async remove(id: string): Promise<ServiceType> {
+    return this.prisma.serviceType.delete({ where: { id } as any }) as unknown as ServiceType;
+  }
+}

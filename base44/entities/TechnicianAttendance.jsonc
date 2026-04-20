@@ -1,0 +1,64 @@
+{
+  "name": "TechnicianAttendance",
+  "type": "object",
+  "properties": {
+    "technician_id": {
+      "type": "string",
+      "description": "Technician entity ID"
+    },
+    "technician_name": {
+      "type": "string",
+      "description": "Technician full name (denormalized)"
+    },
+    "technician_code": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Work date YYYY-MM-DD"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "scheduled",
+        "checked_in",
+        "checked_out",
+        "absent"
+      ],
+      "default": "scheduled"
+    },
+    "check_in_time": {
+      "type": "string",
+      "description": "HH:mm check-in time"
+    },
+    "check_out_time": {
+      "type": "string",
+      "description": "HH:mm check-out time"
+    },
+    "check_in_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "check_out_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "work_hours": {
+      "type": "number",
+      "description": "Total hours worked (auto-calculated)"
+    },
+    "scheduled_jobs": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of jobs scheduled this day"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "technician_id",
+    "date"
+  ]
+}

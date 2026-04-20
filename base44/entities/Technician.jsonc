@@ -1,0 +1,159 @@
+{
+  "name": "Technician",
+  "type": "object",
+  "properties": {
+    "technician_code": {
+      "type": "string",
+      "description": "Unique technician identifier"
+    },
+    "full_name": {
+      "type": "string",
+      "description": "Full name of the technician"
+    },
+    "email": {
+      "type": "string",
+      "description": "Email address"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Phone number"
+    },
+    "photo_url": {
+      "type": "string",
+      "description": "Profile photo URL"
+    },
+    "linked_user_id": {
+      "type": "string",
+      "description": "Linked User entity ID (synced app user)"
+    },
+    "linked_user_email": {
+      "type": "string",
+      "description": "Linked user email (denormalized)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive",
+        "on_leave",
+        "suspended"
+      ],
+      "default": "active",
+      "description": "Current status"
+    },
+    "team_role": {
+      "type": "string",
+      "description": "Role code from TeamRole e.g. supervisor, engineer"
+    },
+    "team_role_name": {
+      "type": "string",
+      "description": "Role display name (denormalized)"
+    },
+    "team_id": {
+      "type": "string",
+      "description": "Team entity ID"
+    },
+    "team_name": {
+      "type": "string",
+      "description": "Team name (denormalized)"
+    },
+    "home_latitude": {
+      "type": "number",
+      "description": "Home base latitude"
+    },
+    "home_longitude": {
+      "type": "number",
+      "description": "Home base longitude"
+    },
+    "current_latitude": {
+      "type": "number",
+      "description": "Current location latitude"
+    },
+    "current_longitude": {
+      "type": "number",
+      "description": "Current location longitude"
+    },
+    "zone_id": {
+      "type": "string",
+      "description": "Assigned service zone ID"
+    },
+    "zone_name": {
+      "type": "string",
+      "description": "Assigned service zone name"
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of APPROVED skill names (auto-synced from approved MemberSkillCert)"
+    },
+    "certifications": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of certifications"
+    },
+    "max_daily_jobs": {
+      "type": "number",
+      "default": 6,
+      "description": "Maximum jobs per day"
+    },
+    "current_daily_jobs": {
+      "type": "number",
+      "default": 0,
+      "description": "Jobs assigned today"
+    },
+    "avg_completion_time_hrs": {
+      "type": "number",
+      "description": "Average job completion time in hours"
+    },
+    "sla_compliance_rate": {
+      "type": "number",
+      "description": "SLA compliance percentage (0-100)"
+    },
+    "customer_rating": {
+      "type": "number",
+      "description": "Average customer rating (1-5)"
+    },
+    "jobs_completed_total": {
+      "type": "number",
+      "default": 0,
+      "description": "Total jobs completed"
+    },
+    "performance_score": {
+      "type": "number",
+      "description": "AI-calculated performance score (0-100)"
+    },
+    "availability": {
+      "type": "string",
+      "enum": [
+        "available",
+        "busy",
+        "offline",
+        "break"
+      ],
+      "default": "available",
+      "description": "Current availability"
+    },
+    "working_hours_start": {
+      "type": "string",
+      "default": "08:00",
+      "description": "Daily start time"
+    },
+    "working_hours_end": {
+      "type": "string",
+      "default": "17:00",
+      "description": "Daily end time"
+    },
+    "hourly_rate": {
+      "type": "number",
+      "description": "Hourly labor rate"
+    }
+  },
+  "required": [
+    "technician_code",
+    "full_name"
+  ]
+}

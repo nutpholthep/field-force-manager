@@ -1,0 +1,26 @@
+{
+  "name": "field-force-manager",
+  "version": "1.0.0",
+  "private": true,
+  "description": "iCrewForce Field Force Manager — Next.js 16 (App Router) + NestJS + Prisma. Apps install dependencies independently inside apps/api and apps/web.",
+  "scripts": {
+    "install:all": "yarn --cwd apps/api install && yarn --cwd apps/web install",
+    "dev:api": "yarn --cwd apps/api dev",
+    "dev:web": "yarn --cwd apps/web dev",
+    "build:api": "yarn --cwd apps/api build",
+    "build:web": "yarn --cwd apps/web build",
+    "lint": "yarn --cwd apps/api lint && yarn --cwd apps/web lint",
+    "typecheck": "yarn --cwd apps/api typecheck && yarn --cwd apps/web typecheck",
+    "db:generate": "yarn --cwd apps/api prisma:generate",
+    "db:migrate": "yarn --cwd apps/api prisma:migrate",
+    "db:deploy": "yarn --cwd apps/api prisma:deploy",
+    "db:seed": "yarn --cwd apps/api prisma:seed",
+    "db:studio": "yarn --cwd apps/api prisma:studio",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

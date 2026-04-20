@@ -1,0 +1,209 @@
+{
+  "name": "WorkOrder",
+  "type": "object",
+  "properties": {
+    "order_number": {
+      "type": "string",
+      "description": "Unique work order number"
+    },
+    "title": {
+      "type": "string",
+      "description": "Job title/summary"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "created",
+        "assigned",
+        "accepted",
+        "traveling",
+        "on_site",
+        "working",
+        "stuck",
+        "completed",
+        "cancelled"
+      ],
+      "default": "created",
+      "description": "Current status"
+    },
+    "stuck_reason_id": {
+      "type": "string",
+      "description": "StuckReason entity ID"
+    },
+    "stuck_reason_name": {
+      "type": "string",
+      "description": "Stuck reason name (denormalized)"
+    },
+    "stuck_note": {
+      "type": "string",
+      "description": "Additional note about why the job is stuck"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "critical",
+        "high",
+        "medium",
+        "low"
+      ],
+      "default": "medium",
+      "description": "Job priority"
+    },
+    "service_type": {
+      "type": "string",
+      "enum": [
+        "installation",
+        "maintenance",
+        "repair",
+        "inspection",
+        "emergency",
+        "upgrade",
+        "removal"
+      ],
+      "default": "maintenance",
+      "description": "Type of service"
+    },
+    "required_skills": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Skills needed for this job"
+    },
+    "customer_name": {
+      "type": "string",
+      "description": "Customer name"
+    },
+    "customer_id": {
+      "type": "string",
+      "description": "Customer entity ID"
+    },
+    "site_name": {
+      "type": "string",
+      "description": "Site name"
+    },
+    "site_id": {
+      "type": "string",
+      "description": "Site entity ID"
+    },
+    "site_latitude": {
+      "type": "number",
+      "description": "Job site latitude"
+    },
+    "site_longitude": {
+      "type": "number",
+      "description": "Job site longitude"
+    },
+    "zone_name": {
+      "type": "string",
+      "description": "Service zone name"
+    },
+    "assigned_technician_id": {
+      "type": "string",
+      "description": "Assigned technician entity ID"
+    },
+    "assigned_technician_name": {
+      "type": "string",
+      "description": "Assigned technician name"
+    },
+    "sla_due": {
+      "type": "string",
+      "format": "date-time",
+      "description": "SLA deadline"
+    },
+    "sla_risk": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default": "low",
+      "description": "AI-predicted SLA risk"
+    },
+    "scheduled_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Scheduled date"
+    },
+    "scheduled_time": {
+      "type": "string",
+      "description": "Scheduled time slot"
+    },
+    "estimated_duration_hrs": {
+      "type": "number",
+      "default": 2,
+      "description": "Estimated duration in hours"
+    },
+    "actual_duration_hrs": {
+      "type": "number",
+      "description": "Actual duration in hours"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Actual start time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Actual completion time"
+    },
+    "travel_distance_km": {
+      "type": "number",
+      "description": "Travel distance in km"
+    },
+    "labor_cost": {
+      "type": "number",
+      "description": "Labor cost"
+    },
+    "equipment_cost": {
+      "type": "number",
+      "description": "Equipment/material cost"
+    },
+    "travel_cost": {
+      "type": "number",
+      "description": "Travel cost"
+    },
+    "total_cost": {
+      "type": "number",
+      "description": "Total job cost"
+    },
+    "customer_rating": {
+      "type": "number",
+      "description": "Customer rating (1-5)"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "File URLs"
+    },
+    "dispatch_score": {
+      "type": "number",
+      "description": "AI dispatch score for assignment"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Project entity ID (if part of a project)"
+    },
+    "project_step_id": {
+      "type": "string",
+      "description": "Workflow node ID for this step"
+    }
+  },
+  "required": [
+    "order_number",
+    "title",
+    "service_type"
+  ]
+}
