@@ -196,12 +196,9 @@ Flow นี้อิงจากเอกสารใน `apps/README-TH.md`
 
 ## 🎬 ตัวอย่างการใช้งาน Flow (End-to-End Demo)
 
-ตัวอย่างภาพ/วิดีโอ E2E ยังไม่ถูกเพิ่มเข้ามาใน repository นี้
+ตัวอย่างภาพ E2E:
 
-> หากต้องการให้ preview ได้ใน README ให้เพิ่มไฟล์ที่ `docs/demo-e2e-flow.webp`
-> แล้วใช้ markdown นี้:
->
-> `![E2E Demo: สร้างงาน -> Dispatch -> GIS -> จบงาน](docs/demo-e2e-flow.webp)`
+![E2E Demo: สร้างงาน -> Dispatch -> GIS -> จบงาน](apps/docs/demo-e2e-flow.webp)
 
 
 
