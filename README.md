@@ -194,11 +194,16 @@ Flow นี้อิงจากเอกสารใน `apps/README-TH.md`
 7. Working - เริ่มปฏิบัติงาน
 8. Completed - ปิดงานสำเร็จ
 
-ภาพ flow (ถ้ามีไฟล์):
+## 🎬 ตัวอย่างการใช้งาน Flow (End-to-End Demo)
 
-`docs/demo-e2e-flow.webp`
+ตัวอย่างภาพ/วิดีโอ E2E ยังไม่ถูกเพิ่มเข้ามาใน repository นี้
 
----
+> หากต้องการให้ preview ได้ใน README ให้เพิ่มไฟล์ที่ `docs/demo-e2e-flow.webp`
+> แล้วใช้ markdown นี้:
+>
+> `![E2E Demo: สร้างงาน -> Dispatch -> GIS -> จบงาน](docs/demo-e2e-flow.webp)`
+
+
 
 ## 10) API Modules หลักที่ควรรู้
 
