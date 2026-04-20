@@ -1,228 +1,241 @@
-# iCrewForce — Field Force Manager
+# iCrewForce - Field Force Manager (Developer Handover)
 
-Two independent apps under `apps/`:
+คู่มือนี้เขียนสำหรับ DEV ที่ต้องรับช่วงพัฒนาต่อ ให้เริ่มระบบได้ทันทีและเข้าใจ flow หลักของโปรเจกต์ในเวลาอันสั้น
 
-- **`apps/web`** — Next.js 16 (App Router) frontend
-- **`apps/api`** — NestJS 10 + Prisma 5 (PostgreSQL) backend with JWT auth
+โปรเจกต์นี้มี 2 แอปหลักในโฟลเดอร์ `apps/`
 
-Each app has its own `package.json`, `node_modules`, and lockfile. **No workspace tooling required.**
+- `apps/web` - Frontend (Next.js 16 + App Router)
+- `apps/api` - Backend (NestJS 10 + Prisma + PostgreSQL)
 
----
-
-## Tech Stack
-
-| Layer       | Technology                                                          |
-| ----------- | ------------------------------------------------------------------- |
-| Frontend    | Next.js 16 (App Router), TypeScript, Tailwind CSS, shadcn/ui        |
-| Data layer  | `@tanstack/react-query`, Axios (with JWT refresh)                   |
-| Backend     | NestJS 10, TypeScript, class-validator, Swagger                     |
-| ORM         | Prisma 5                                                            |
-| Database    | PostgreSQL 14+                                                      |
-| Auth        | JWT access + refresh, bcrypt-hashed passwords                       |
-| Shared code | `apps/web/src/shared` — types + Zod schemas (inlined into the app)  |
-| Pkg mgr     | yarn (each app installed standalone)                                |
+> แต่ละแอปแยก dependency ของตัวเอง (`package.json`, `node_modules`) ไม่ได้ใช้ workspace manager แบบ monorepo เต็มรูปแบบ
 
 ---
 
-## Project Layout
+## 1) Tech Stack โดยย่อ
 
-```
+- Frontend: Next.js 16, TypeScript, Tailwind CSS, shadcn/ui
+- Backend: NestJS 10, TypeScript, Swagger, class-validator
+- ORM/DB: Prisma 5 + PostgreSQL 14+
+- Auth: JWT access + refresh token
+- HTTP Client: Axios + refresh interceptor
+- Package manager: Yarn (ติดตั้งแยกแต่ละแอป)
+
+---
+
+## 2) โครงสร้างโปรเจกต์
+
+```text
 field-force-manager/
 ├── apps/
-│   ├── api/                  # NestJS + Prisma  (own package.json, own node_modules)
-│   │   ├── Dockerfile
-│   │   ├── .dockerignore
-│   │   └── prisma/
-│   └── web/                  # Next.js 16        (own package.json, own node_modules)
-│       ├── Dockerfile
-│       ├── .dockerignore
-│       └── src/shared/       # Inlined shared types + Zod schemas
+│   ├── api/                  # NestJS + Prisma
+│   │   ├── prisma/           # schema, migrations, seed
+│   │   └── src/              # modules/controllers/services
+│   └── web/                  # Next.js App Router
+│       └── src/
+│           ├── app/          # routes/pages/layouts
+│           ├── components/   # UI + business components
+│           ├── lib/          # api client, token storage, helpers
+│           └── shared/       # shared types/schemas
 ├── docker-compose.yml        # postgres + api + web
-├── .env.example              # Compose overrides (JWT_SECRET, …)
-└── package.json              # Convenience root scripts (delegate via yarn --cwd)
+├── .env.example              # env สำหรับ docker compose
+└── package.json              # คำสั่ง helper ที่เรียกไปแต่ละ app
 ```
 
-> The legacy Vite/Base44 export under `src/` and `base44/` at the repo root is unrelated to the active apps and can be removed when no longer needed.
+---
+
+## 3) Prerequisites
+
+เลือกได้ 2 วิธี:
+
+- Local dev: Node.js 20+, Yarn 1.22+, PostgreSQL 14+
+- Docker-only: Docker Desktop 24+ (ไม่ต้องลง Node/Yarn บนเครื่อง)
 
 ---
 
-## Prerequisites
-
-Pick one path:
-
-- **Local dev**: Node.js 20+, yarn 1.22+ (`npm i -g yarn`), and a PostgreSQL 14+ instance
-- **Docker only**: Docker Desktop 24+ (no Node/yarn needed on the host)
-
----
-
-## Quick Start — Docker (recommended for testing)
+## 4) Quick Start (แนะนำ) - Docker
 
 ```powershell
-# Optional: copy compose env overrides
 Copy-Item .env.example .env
-
-# Build + start postgres + api + web
 docker compose up --build
-
-# Tail logs only
-docker compose logs -f
 ```
 
-Open:
-- Web: http://localhost:3000
-- API: http://localhost:3001/api
-- Swagger: http://localhost:3001/api/docs
+บริการที่ใช้งานได้:
 
-The `api` service automatically runs `prisma migrate deploy` and seeds the database (idempotent) on every start.
+- Web: `http://localhost:3000`
+- API: `http://localhost:3001/api`
+- Swagger: `http://localhost:3001/api/docs`
 
-Stop & clean:
-```powershell
-docker compose down            # stop containers
-docker compose down -v         # …and wipe the postgres volume
-```
+ค่า user ที่ seed มาเริ่มต้น:
 
-Default seeded admin (`apps/api/prisma/seed.ts`):
-```
-email:    admin@ffm.local
+```text
+email: admin@ffm.local
 password: admin123
 ```
 
----
-
-## Quick Start — Local (yarn per app)
+หยุดระบบ:
 
 ```powershell
-# 1) API
-cd apps/api
-Copy-Item .env.example .env
-# edit .env → DATABASE_URL pointing to your local Postgres
-yarn install
-yarn prisma:generate
-yarn prisma:migrate    # creates schema + applies migrations
-yarn prisma:seed       # admin + master data
-yarn dev               # http://localhost:3001/api
+docker compose down
+```
 
-# 2) Web (in another terminal)
-cd apps/web
-Copy-Item .env.example .env.local
-yarn install
-yarn dev               # http://localhost:3000
+ล้างข้อมูล DB volume:
+
+```powershell
+docker compose down -v
 ```
 
 ---
 
-## Convenience Root Scripts (optional)
+## 5) Local Development (แนะนำตอนพัฒนา feature)
 
-The root `package.json` only contains thin wrappers around `yarn --cwd apps/<app>`:
+เปิด 2 terminal
+
+### Terminal A - API
 
 ```powershell
-yarn install:all         # install both apps
-yarn dev:api             # → apps/api
-yarn dev:web             # → apps/web
+cd apps/api
+Copy-Item .env.example .env
+```
+
+แก้ `apps/api/.env` โดยเฉพาะ `DATABASE_URL` ให้ชี้ PostgreSQL ของเครื่องคุณ แล้วรัน:
+
+```powershell
+yarn install
+yarn prisma:generate
+yarn prisma:migrate
+yarn prisma:seed
+yarn dev
+```
+
+API จะรันที่ `http://localhost:3001/api`
+
+### Terminal B - WEB
+
+```powershell
+cd apps/web
+Copy-Item .env.example .env.local
+yarn install
+yarn dev
+```
+
+Web จะรันที่ `http://localhost:3000`
+
+---
+
+## 6) Root Scripts ที่ใช้บ่อย
+
+```powershell
+yarn install:all
+yarn dev:api
+yarn dev:web
 yarn build:api
 yarn build:web
-yarn typecheck           # both
-yarn lint                # both
+yarn lint
+yarn typecheck
 
-# Database
-yarn db:migrate          # prisma migrate dev (in apps/api)
+yarn db:migrate
 yarn db:seed
 yarn db:studio
 
-# Docker
-yarn docker:up           # docker compose up --build
+yarn docker:up
 yarn docker:down
 yarn docker:logs
 ```
 
 ---
 
-## Environment Variables
+## 7) Environment Variables ที่สำคัญ
 
-### `apps/api/.env` (template at `apps/api/.env.example`)
+### `apps/api/.env`
 
-```
+```env
 NODE_ENV=development
 PORT=3001
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ffm?schema=public
-JWT_SECRET=...
+JWT_SECRET=your_access_secret
 JWT_EXPIRES_IN=15m
-JWT_REFRESH_SECRET=...
+JWT_REFRESH_SECRET=your_refresh_secret
 JWT_REFRESH_EXPIRES_IN=7d
 CORS_ORIGIN=http://localhost:3000
 ```
 
-### `apps/web/.env.local` (template at `apps/web/.env.example`)
+### `apps/web/.env.local`
 
-```
+```env
 NEXT_PUBLIC_API_URL=http://localhost:3001
 NEXT_PUBLIC_APP_NAME=Field Force Manager
 ```
 
-### `.env` at repo root (used by `docker compose`, see `.env.example`)
+### `.env` (root - สำหรับ docker compose)
 
-Overrides for `docker-compose.yml` — `JWT_SECRET`, `CORS_ORIGIN`, `NEXT_PUBLIC_API_URL`, etc.
-
----
-
-## Authentication Flow
-
-1. `POST /api/auth/login` → `{ user, tokens: { access_token, refresh_token, expires_in } }`
-2. Access token stored in `localStorage` (`apps/web/src/lib/token-storage.ts`); attached to every request via Axios interceptor.
-3. On `401`, the interceptor transparently calls `POST /api/auth/refresh`.
-4. `GET /api/auth/me` bootstraps the session on first page load.
-
-Routes inside the `(app)` group are protected client-side by `apps/web/src/app/(app)/layout.tsx`.
+ใช้ override ค่า env ของ container เช่น JWT secrets, CORS, API URL
 
 ---
 
-## API — Entity CRUD
+## 8) Authentication Flow
 
-Each entity is exposed as `GET / GET :id / POST / PATCH :id / DELETE :id` under its route. Highlights:
-
-| Entity               | Route                    |
-| -------------------- | ------------------------ |
-| Customer             | `/api/customers`         |
-| Site                 | `/api/sites`             |
-| Zone                 | `/api/zones`             |
-| Project              | `/api/projects`          |
-| Skill                | `/api/skills`            |
-| PriorityMaster       | `/api/priorities`        |
-| StuckReason          | `/api/stuck-reasons`     |
-| MaterialCategory     | `/api/material-categories` |
-| Material             | `/api/materials`         |
-| ServiceType          | `/api/service-types`     |
-| Workflow             | `/api/workflows`         |
-| Team / TeamRole      | `/api/teams`, `/api/team-roles` |
-| Technician           | `/api/technicians`       |
-| WorkOrder            | `/api/work-orders`       |
-| Notification         | `/api/notifications`     |
-| AIAgent              | `/api/agents`            |
-| User                 | `/api/users`             |
+1. `POST /api/auth/login` เพื่อรับ `access_token` + `refresh_token`
+2. ฝั่ง web เก็บ token และแนบ access token ใน request ผ่าน axios interceptor
+3. ถ้าเจอ `401` จะยิง `POST /api/auth/refresh` อัตโนมัติ
+4. หน้าแรกของแอปเรียก `GET /api/auth/me` เพื่อโหลด session ปัจจุบัน
 
 ---
 
-## Notes on the @ffm/shared move
+## 9) Business Flow (E2E) สำหรับทีมที่มารับช่วง
 
-The previous `packages/shared` workspace package is now inlined into `apps/web/src/shared`. Imports such as
+Flow นี้อิงจากเอกสารใน `apps/README-TH.md`
 
-```ts
-import type { Technician } from '@ffm/shared';
-```
+1. Create Work Order - สร้างใบงานและกำหนดข้อมูลหน้างาน
+2. Dispatch - จ่ายงานให้ทีม/ช่างที่เหมาะสม
+3. GIS Monitor - ติดตามงานและตำแหน่งแบบเรียลไทม์
+4. Accept - ช่างรับงาน
+5. Traveling - ช่างเดินทางไปหน้างาน
+6. On Site - ถึงหน้างาน
+7. Working - เริ่มปฏิบัติงาน
+8. Completed - ปิดงานสำเร็จ
 
-still resolve via the `@ffm/shared` → `./src/shared` path mapping in `apps/web/tsconfig.json` — no source changes were needed.
+ภาพ flow (ถ้ามีไฟล์):
 
-The api app does not import `@ffm/shared`, so its dependency was simply removed.
+`docs/demo-e2e-flow.webp`
 
 ---
 
-## Known Cleanup Items
+## 10) API Modules หลักที่ควรรู้
 
-- Pre-existing TypeScript errors in `apps/web/src/components/{agents,team,workorders,projects}` and a few `app/(app)/*/page.tsx` files. To unblock `next build` inside Docker, `next.config.ts` currently sets `typescript.ignoreBuildErrors: true` and `eslint.ignoreDuringBuilds: true`. Flip both back to `false` after fixing the underlying types (run `yarn typecheck` inside `apps/web`).
-- The legacy `src/`, `base44/`, `vite.config.js`, `tailwind.config.js`, `postcss.config.js`, `eslint.config.js`, `components.json`, `jsconfig.json`, and `index.html` at the repo root are remnants of the original Base44 Vite app and are not used by the new apps.
+ตัวอย่าง resource สำคัญ:
+
+- `/api/work-orders`
+- `/api/technicians`
+- `/api/teams`
+- `/api/projects`
+- `/api/customers`
+- `/api/sites`
+- `/api/materials`
+- `/api/notifications`
+- `/api/users`
+
+> ส่วนใหญ่เป็น CRUD มาตรฐาน (`GET`, `GET :id`, `POST`, `PATCH :id`, `DELETE :id`)
+
+---
+
+## 11) ข้อควรรู้ก่อนพัฒนาต่อ
+
+- มี legacy โค้ดบางส่วนที่ไม่ใช่เส้นทางหลักของแอปปัจจุบัน (เช่นไฟล์จาก Vite/Base44 ที่ root)
+- ในบางช่วง `next build` อาจตั้งค่าให้ข้าม type/lint errors เพื่อให้ pipeline เดินต่อได้ ควรวางแผนเคลียร์ type debt แล้วเปิด strict checks กลับ
+- ถ้าจะเปลี่ยน Prisma schema ให้รัน migration + seed ให้ครบ และอัปเดต API contract ให้สอดคล้องหน้าเว็บ
+
+---
+
+## 12) แนวทางส่งต่องาน (Suggested Handover Checklist)
+
+- ยืนยันว่า `docker compose up --build` ผ่านบนเครื่องใหม่
+- ยืนยัน login ด้วย `admin@ffm.local` ได้
+- ทดสอบ flow งานหลัก: Create -> Dispatch -> Completed
+- รัน `yarn lint` และ `yarn typecheck` ทั้ง API/Web ก่อนเปิด PR
+- อัปเดตเอกสารนี้ทุกครั้งที่มีการเปลี่ยน env, endpoint, หรือ flow สำคัญ
 
 ---
 
 ## License
 
-Proprietary — internal use only.
+Proprietary - Internal use only.
