@@ -26,12 +26,16 @@ import { WorkOrderStepDataModule } from './modules/work-order-step-data/work-ord
 import { ProjectsModule } from './modules/projects/projects.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AgentsModule } from './modules/agents/agents.module';
+import { UploadsModule } from './modules/uploads/uploads.module';
+import { AiModule } from './modules/ai/ai.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     AuthModule,
+    UploadsModule,
+    AiModule,
     UsersModule,
     CustomersModule,
     SitesModule,

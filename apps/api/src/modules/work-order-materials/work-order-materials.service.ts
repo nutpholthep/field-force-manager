@@ -3,29 +3,30 @@ import { WorkOrderMaterial } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 import { CreateWorkOrderMaterialDto, UpdateWorkOrderMaterialDto } from './dto/work-order-material.dto';
-import { parseSort } from '../../common/utils/query.util';
+import { parseSort, withActiveWhere } from '../../common/utils/query.util';
 
 
 @Injectable()
 export class WorkOrderMaterialsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(opts: { sort?: string; limit?: number; offset?: number; where?: Record<string, unknown> } = {}): Promise<WorkOrderMaterial[]> {
-    const { sort, limit = 100, offset = 0, where } = opts;
+  async list(opts: { sort?: string; limit?: number; offset?: number; where?: Record<string, unknown>; includeInactive?: boolean } = {}): Promise<WorkOrderMaterial[]> {
+    const { sort, limit = 100, offset = 0, where, includeInactive = false } = opts;
+    const effectiveWhere = withActiveWhere(where, includeInactive);
     return this.prisma.workOrderMaterial.findMany({
-      where,
+      where: effectiveWhere,
       orderBy: parseSort(sort) ?? { created_date: 'desc' },
       take: Math.min(Math.max(limit, 1), 1000),
       skip: offset,
     }) as unknown as Promise<WorkOrderMaterial[]>;
   }
 
-  async count(where?: Record<string, unknown>): Promise<number> {
-    return this.prisma.workOrderMaterial.count({ where });
+  async count(where?: Record<string, unknown>, includeInactive = false): Promise<number> {
+    return this.prisma.workOrderMaterial.count({ where: withActiveWhere(where, includeInactive) });
   }
 
   async findById(id: string): Promise<WorkOrderMaterial> {
-    const result = await this.prisma.workOrderMaterial.findUnique({ where: { id } as any });
+    const result = await this.prisma.workOrderMaterial.findFirst({ where: withActiveWhere({ id }, false) as any });
     if (!result) throw new NotFoundException(`WorkOrderMaterials ${id} not found`);
     return result as unknown as WorkOrderMaterial;
   }
@@ -39,6 +40,6 @@ export class WorkOrderMaterialsService {
   }
 
   async remove(id: string): Promise<WorkOrderMaterial> {
-    return this.prisma.workOrderMaterial.delete({ where: { id } as any }) as unknown as WorkOrderMaterial;
+    return this.prisma.workOrderMaterial.update({ where: { id } as any, data: { is_active: false } as any }) as unknown as WorkOrderMaterial;
   }
 }

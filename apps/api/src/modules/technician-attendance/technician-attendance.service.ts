@@ -3,29 +3,30 @@ import { TechnicianAttendance } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 import { CreateTechnicianAttendanceDto, UpdateTechnicianAttendanceDto } from './dto/technician-attendance.dto';
-import { parseSort } from '../../common/utils/query.util';
+import { parseSort, withActiveWhere } from '../../common/utils/query.util';
 
 
 @Injectable()
 export class TechnicianAttendanceService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(opts: { sort?: string; limit?: number; offset?: number; where?: Record<string, unknown> } = {}): Promise<TechnicianAttendance[]> {
-    const { sort, limit = 100, offset = 0, where } = opts;
+  async list(opts: { sort?: string; limit?: number; offset?: number; where?: Record<string, unknown>; includeInactive?: boolean } = {}): Promise<TechnicianAttendance[]> {
+    const { sort, limit = 100, offset = 0, where, includeInactive = false } = opts;
+    const effectiveWhere = withActiveWhere(where, includeInactive);
     return this.prisma.technicianAttendance.findMany({
-      where,
+      where: effectiveWhere,
       orderBy: parseSort(sort) ?? { created_date: 'desc' },
       take: Math.min(Math.max(limit, 1), 1000),
       skip: offset,
     }) as unknown as Promise<TechnicianAttendance[]>;
   }
 
-  async count(where?: Record<string, unknown>): Promise<number> {
-    return this.prisma.technicianAttendance.count({ where });
+  async count(where?: Record<string, unknown>, includeInactive = false): Promise<number> {
+    return this.prisma.technicianAttendance.count({ where: withActiveWhere(where, includeInactive) });
   }
 
   async findById(id: string): Promise<TechnicianAttendance> {
-    const result = await this.prisma.technicianAttendance.findUnique({ where: { id } as any });
+    const result = await this.prisma.technicianAttendance.findFirst({ where: withActiveWhere({ id }, false) as any });
     if (!result) throw new NotFoundException(`TechnicianAttendance ${id} not found`);
     return result as unknown as TechnicianAttendance;
   }
@@ -39,6 +40,6 @@ export class TechnicianAttendanceService {
   }
 
   async remove(id: string): Promise<TechnicianAttendance> {
-    return this.prisma.technicianAttendance.delete({ where: { id } as any }) as unknown as TechnicianAttendance;
+    return this.prisma.technicianAttendance.update({ where: { id } as any, data: { is_active: false } as any }) as unknown as TechnicianAttendance;
   }
 }

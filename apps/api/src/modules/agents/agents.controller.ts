@@ -11,7 +11,8 @@ import { CreateAgentDto, UpdateAgentDto } from './dto/agent.dto';
 export class AgentsController {
   constructor(private readonly service: AgentsService) {}
   @Get() list(@Query() q: ListQueryDto) {
-    return this.service.list({ sort: q.sort, limit: q.limit, offset: q.offset, where: parseWhere(q.where) });
+    return this.service.list({ sort: q.sort, limit: q.limit, offset: q.offset, where: parseWhere(q.where),
+      includeInactive: q.include_inactive });
   }
   @Get(':id') findOne(@Param('id') id: string) { return this.service.findById(id); }
   @Post() create(@Body() dto: CreateAgentDto) { return this.service.create(dto); }

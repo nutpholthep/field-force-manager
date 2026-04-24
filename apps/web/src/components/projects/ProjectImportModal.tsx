@@ -59,10 +59,9 @@ export default function ProjectImportModal({ onClose, onDone, workflows, sites }
     if (!file) return;
     setStep("parsing");
 
-    // TODO: backend AI endpoint — replace Base44 integrations.Core.UploadFile + ExtractDataFromUploadedFile
     const formData = new FormData();
     formData.append("file", file);
-    const uploadRes = await http.post<{ file_url: string }>("/ai/invoke", formData);
+    const uploadRes = await http.post<{ file_url: string }>("/uploads", formData);
     const { file_url } = uploadRes.data;
 
     const extractRes = await http.post<{ status: string; output: { rows?: Array<{ site_name?: string; workflow_name?: string; start_date?: string }> } | Array<{ site_name?: string; workflow_name?: string; start_date?: string }> }>(

@@ -92,7 +92,7 @@ yarn dev               # เริ่มการทำงานของ Fronte
 
 วิดีโอด้านล่างเป็นการจำลองการใช้งานระบบแบบ End-to-End ตั้งแต่สร้างใบสั่งงาน ไปจนถึงปิดงานสำเร็จ:
 
-![E2E Demo: สร้างงาน → Dispatch → GIS → จบงาน](docs/demo-e2e-flow.webp)
+![E2E Demo: สร้างงาน → Dispatch → GIS → จบงาน](/docs/demo-e2e-flow.webp)
 
 ### ขั้นตอนการทำงานของระบบ (Workflow)
 1. **สร้างใบงาน (Create Work Order)** — กรอกข้อมูลงาน ลูกค้า พื้นที่ วัสดุอุปกรณ์ และกำหนด SLA

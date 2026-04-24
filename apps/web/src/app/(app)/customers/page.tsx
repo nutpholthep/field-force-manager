@@ -68,20 +68,22 @@ export default function CustomersPage() {
   const [form, setForm] = useState<CustomerFormState>({ ...emptyForm });
   const [typeFilter, setTypeFilter] = useState('all');
   const queryClient = useQueryClient();
+  const normalizedSearch = search.trim();
 
   const { data: customers = [], isLoading } = useQuery<Customer[]>({
-    queryKey: ['customers'],
-    queryFn: () => entities.Customer.list('-created_date', 200),
-  });
-
-  const filtered = customers.filter((c) => {
-    const matchSearch =
-      !search ||
-      c.name?.toLowerCase().includes(search.toLowerCase()) ||
-      c.contact_person?.toLowerCase().includes(search.toLowerCase()) ||
-      c.email?.toLowerCase().includes(search.toLowerCase());
-    const matchType = typeFilter === 'all' || c.type === typeFilter;
-    return matchSearch && matchType;
+    queryKey: ['customers', normalizedSearch, typeFilter],
+    queryFn: () => {
+      const where: Record<string, unknown> = {};
+      if (normalizedSearch) {
+        where.OR = [
+          { name: { contains: normalizedSearch, mode: 'insensitive' } },
+          { contact_person: { contains: normalizedSearch, mode: 'insensitive' } },
+          { email: { contains: normalizedSearch, mode: 'insensitive' } },
+        ];
+      }
+      if (typeFilter !== 'all') where.type = typeFilter;
+      return entities.Customer.filter(where, '-created_date', 200);
+    },
   });
 
   const openEdit = (c: Customer) => {
@@ -127,14 +129,14 @@ export default function CustomersPage() {
         <div>
           <h2 className="text-xl font-bold text-slate-800">Customers</h2>
           <p className="text-sm text-slate-500 mt-0.5">
-            {filtered.length} / {customers.length} customers
+            {customers.length} customers
           </p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
           <MasterToolbar
             search={search}
             onSearch={setSearch}
-            exportData={filtered as unknown as Record<string, unknown>[]}
+            exportData={customers as unknown as Record<string, unknown>[]}
             onImport={(records) => handleImport(records as unknown as Partial<Customer>[])}
           />
           <select
@@ -178,14 +180,14 @@ export default function CustomersPage() {
                     ))}
                   </TableRow>
                 ))
-              ) : filtered.length === 0 ? (
+              ) : customers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-slate-400 py-12">
                     No customers found
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((c) => (
+                customers.map((c) => (
                   <TableRow key={c.id} className="hover:bg-slate-50/50">
                     <TableCell className="font-medium text-sm text-slate-800">{c.name}</TableCell>
                     <TableCell>

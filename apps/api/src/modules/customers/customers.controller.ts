@@ -18,12 +18,13 @@ export class CustomersController {
       limit: q.limit,
       offset: q.offset,
       where: parseWhere(q.where),
+      includeInactive: q.include_inactive,
     });
   }
 
   @Get('count')
-  async count(@Query('where') where?: string) {
-    return { total: await this.service.count(parseWhere(where)) };
+  async count(@Query('where') where?: string, @Query('include_inactive') includeInactive?: string) {
+    return { total: await this.service.count(parseWhere(where), includeInactive === 'true') };
   }
 
   @Get(':id')

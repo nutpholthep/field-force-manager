@@ -12,9 +12,12 @@ export class SitesController {
   constructor(private readonly service: SitesService) {}
 
   @Get() list(@Query() q: ListQueryDto) {
-    return this.service.list({ sort: q.sort, limit: q.limit, offset: q.offset, where: parseWhere(q.where) });
+    return this.service.list({ sort: q.sort, limit: q.limit, offset: q.offset, where: parseWhere(q.where),
+      includeInactive: q.include_inactive });
   }
-  @Get('count') async count(@Query('where') w?: string) { return { total: await this.service.count(parseWhere(w)) }; }
+  @Get('count') async count(@Query('where') w?: string, @Query('include_inactive') includeInactive?: string) {
+    return { total: await this.service.count(parseWhere(w), includeInactive === 'true') };
+  }
   @Get(':id') findOne(@Param('id') id: string) { return this.service.findById(id); }
   @Post() create(@Body() dto: CreateSiteDto) { return this.service.create(dto); }
   @Patch(':id') update(@Param('id') id: string, @Body() dto: UpdateSiteDto) { return this.service.update(id, dto); }

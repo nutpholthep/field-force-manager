@@ -11,7 +11,8 @@ import { CreateZoneDto, UpdateZoneDto } from './dto/zone.dto';
 export class ZonesController {
   constructor(private readonly service: ZonesService) {}
   @Get() list(@Query() q: ListQueryDto) {
-    return this.service.list({ sort: q.sort, limit: q.limit, offset: q.offset, where: parseWhere(q.where) });
+    return this.service.list({ sort: q.sort, limit: q.limit, offset: q.offset, where: parseWhere(q.where),
+      includeInactive: q.include_inactive });
   }
   @Get(':id') findOne(@Param('id') id: string) { return this.service.findById(id); }
   @Post() create(@Body() dto: CreateZoneDto) { return this.service.create(dto); }

@@ -3,29 +3,30 @@ import { WorkOrder } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 import { CreateWorkOrderDto, UpdateWorkOrderDto } from './dto/work-order.dto';
-import { parseSort } from '../../common/utils/query.util';
+import { parseSort, withActiveWhere } from '../../common/utils/query.util';
 
 
 @Injectable()
 export class WorkOrdersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(opts: { sort?: string; limit?: number; offset?: number; where?: Record<string, unknown> } = {}): Promise<WorkOrder[]> {
-    const { sort, limit = 100, offset = 0, where } = opts;
+  async list(opts: { sort?: string; limit?: number; offset?: number; where?: Record<string, unknown>; includeInactive?: boolean } = {}): Promise<WorkOrder[]> {
+    const { sort, limit = 100, offset = 0, where, includeInactive = false } = opts;
+    const effectiveWhere = withActiveWhere(where, includeInactive);
     return this.prisma.workOrder.findMany({
-      where,
+      where: effectiveWhere,
       orderBy: parseSort(sort) ?? { created_date: 'desc' },
       take: Math.min(Math.max(limit, 1), 1000),
       skip: offset,
     }) as unknown as Promise<WorkOrder[]>;
   }
 
-  async count(where?: Record<string, unknown>): Promise<number> {
-    return this.prisma.workOrder.count({ where });
+  async count(where?: Record<string, unknown>, includeInactive = false): Promise<number> {
+    return this.prisma.workOrder.count({ where: withActiveWhere(where, includeInactive) });
   }
 
   async findById(id: string): Promise<WorkOrder> {
-    const result = await this.prisma.workOrder.findUnique({ where: { id } as any });
+    const result = await this.prisma.workOrder.findFirst({ where: withActiveWhere({ id }, false) as any });
     if (!result) throw new NotFoundException(`WorkOrders ${id} not found`);
     return result as unknown as WorkOrder;
   }
@@ -45,6 +46,6 @@ export class WorkOrdersService {
   }
 
   async remove(id: string): Promise<WorkOrder> {
-    return this.prisma.workOrder.delete({ where: { id } as any }) as unknown as WorkOrder;
+    return this.prisma.workOrder.update({ where: { id } as any, data: { is_active: false } as any }) as unknown as WorkOrder;
   }
 }

@@ -179,6 +179,7 @@ model Customer {
   latitude       Float?
   longitude      Float?
   type           CustomerType @default(commercial)
+  is_active      Boolean      @default(true)
   created_date   DateTime     @default(now())
   updated_date   DateTime     @updatedAt
 
@@ -198,6 +199,7 @@ model Site {
   equipment           String[]
   access_instructions String?
   status              ActiveStatus @default(active)
+  is_active           Boolean      @default(true)
   latitude            Float?
   longitude           Float?
   created_date        DateTime     @default(now())
@@ -235,6 +237,7 @@ model Skill {
   name         String
   description  String?
   category     String?
+  is_active    Boolean  @default(true)
   created_date DateTime @default(now())
   updated_date DateTime @updatedAt
 
@@ -396,6 +399,7 @@ model Technician {
   working_hours_start      String                 @default("08:00")
   working_hours_end        String                 @default("17:00")
   hourly_rate              Float?
+  is_active                Boolean                @default(true)
   created_date             DateTime               @default(now())
   updated_date             DateTime               @updatedAt
 
@@ -419,6 +423,7 @@ model MemberSkillCert {
   expiry_date     DateTime?
   status          MemberSkillCertStatus @default(pending)
   reviewer_note   String?
+  is_active       Boolean               @default(true)
   created_date    DateTime              @default(now())
   updated_date    DateTime              @updatedAt
 
@@ -442,6 +447,7 @@ model TechnicianAttendance {
   work_hours       Float?
   scheduled_jobs   Int              @default(0)
   notes            String?
+  is_active        Boolean          @default(true)
   created_date     DateTime         @default(now())
   updated_date     DateTime         @updatedAt
 
@@ -495,6 +501,7 @@ model WorkOrder {
   dispatch_score            Float?
   project_id                String?
   project_step_id           String?
+  is_active                 Boolean              @default(true)
   created_date              DateTime             @default(now())
   updated_date              DateTime             @updatedAt
 
@@ -521,6 +528,7 @@ model WorkOrderMaterial {
   cost_price        Float?
   total_cost        Float?
   notes             String?
+  is_active         Boolean  @default(true)
   created_date      DateTime @default(now())
   updated_date      DateTime @updatedAt
 
@@ -544,6 +552,7 @@ model WorkOrderStepData {
   value_file_url    String?
   value_file_name   String?
   value_materials   Json     @default("[]")
+  is_active         Boolean  @default(true)
   created_date      DateTime @default(now())
   updated_date      DateTime @updatedAt
 
@@ -581,6 +590,7 @@ model Project {
   step_history             Json              @default("[]")
   notes                    String?
   tags                     String[]
+  is_active                Boolean           @default(true)
   created_date             DateTime          @default(now())
   updated_date             DateTime          @updatedAt
 
@@ -610,6 +620,7 @@ model Notification {
   related_entity_type String?
   related_entity_id String?
   meta         Json?
+  is_active    Boolean          @default(true)
   created_date DateTime         @default(now())
   updated_date DateTime         @updatedAt
 

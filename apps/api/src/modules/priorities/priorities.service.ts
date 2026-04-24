@@ -3,29 +3,30 @@ import { PriorityMaster } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 import { CreatePriorityDto, UpdatePriorityDto } from './dto/priority.dto';
-import { parseSort } from '../../common/utils/query.util';
+import { parseSort, withActiveWhere } from '../../common/utils/query.util';
 
 
 @Injectable()
 export class PrioritiesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(opts: { sort?: string; limit?: number; offset?: number; where?: Record<string, unknown> } = {}): Promise<PriorityMaster[]> {
-    const { sort, limit = 100, offset = 0, where } = opts;
+  async list(opts: { sort?: string; limit?: number; offset?: number; where?: Record<string, unknown>; includeInactive?: boolean } = {}): Promise<PriorityMaster[]> {
+    const { sort, limit = 100, offset = 0, where, includeInactive = false } = opts;
+    const effectiveWhere = withActiveWhere(where, includeInactive);
     return this.prisma.priorityMaster.findMany({
-      where,
+      where: effectiveWhere,
       orderBy: parseSort(sort) ?? { created_date: 'desc' },
       take: Math.min(Math.max(limit, 1), 1000),
       skip: offset,
     }) as unknown as Promise<PriorityMaster[]>;
   }
 
-  async count(where?: Record<string, unknown>): Promise<number> {
-    return this.prisma.priorityMaster.count({ where });
+  async count(where?: Record<string, unknown>, includeInactive = false): Promise<number> {
+    return this.prisma.priorityMaster.count({ where: withActiveWhere(where, includeInactive) });
   }
 
   async findById(id: string): Promise<PriorityMaster> {
-    const result = await this.prisma.priorityMaster.findUnique({ where: { id } as any });
+    const result = await this.prisma.priorityMaster.findFirst({ where: withActiveWhere({ id }, false) as any });
     if (!result) throw new NotFoundException(`Priorities ${id} not found`);
     return result as unknown as PriorityMaster;
   }
@@ -39,6 +40,6 @@ export class PrioritiesService {
   }
 
   async remove(id: string): Promise<PriorityMaster> {
-    return this.prisma.priorityMaster.delete({ where: { id } as any }) as unknown as PriorityMaster;
+    return this.prisma.priorityMaster.update({ where: { id } as any, data: { is_active: false } as any }) as unknown as PriorityMaster;
   }
 }

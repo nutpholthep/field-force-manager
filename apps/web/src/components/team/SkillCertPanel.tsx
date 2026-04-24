@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Award, Upload, Check, X, Clock, FileText, Trash2, ExternalLink,
   Plus, Loader2, AlertCircle, CheckCircle2, AlertTriangle, Package,
@@ -15,6 +14,7 @@ import {
 import BulkSkillImport from './BulkSkillImport';
 import { entities } from '@/lib/entity-client';
 import { http } from '@/lib/api';
+import { toast } from 'sonner';
 import type { MemberSkillCert, MemberSkillCertStatus, Skill } from '@ffm/shared';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: LucideIcon }> = {
@@ -98,12 +98,19 @@ function CertCard({ cert, onStatusChange, onDelete }: CertCardProps) {
 }
 
 interface NewCertState {
-  skill_id: string;
-  skill_name: string;
+  skill_ids: string[];
   issued_date: string;
   expiry_date: string;
   cert_file_url: string;
   cert_file_name: string;
+}
+
+function toIsoDateStart(value?: string): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return `${trimmed}T00:00:00.000Z`;
+  return trimmed;
 }
 
 interface Props {
@@ -117,7 +124,7 @@ export default function SkillCertPanel({ technicianId, technicianName }: Props) 
   const [adding, setAdding] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [newCert, setNewCert] = useState<NewCertState>({ skill_id: '', skill_name: '', issued_date: '', expiry_date: '', cert_file_url: '', cert_file_name: '' });
+  const [newCert, setNewCert] = useState<NewCertState>({ skill_ids: [], issued_date: '', expiry_date: '', cert_file_url: '', cert_file_name: '' });
 
   const { data: certs = [], isLoading } = useQuery<MemberSkillCert[]>({
     queryKey: ['skillCerts', technicianId],
@@ -128,8 +135,16 @@ export default function SkillCertPanel({ technicianId, technicianName }: Props) 
     queryKey: ['skills'],
     queryFn: () => entities.Skill.list('name', 500),
   });
+  const { data: technician } = useQuery({
+    queryKey: ['technician', technicianId],
+    queryFn: () => entities.Technician.findById(technicianId),
+    enabled: !!technicianId,
+  });
 
-  const refresh = () => qc.invalidateQueries({ queryKey: ['skillCerts', technicianId] });
+  const refresh = async () => {
+    await qc.invalidateQueries({ queryKey: ['skillCerts', technicianId] });
+    await qc.invalidateQueries({ queryKey: ['technicians'] });
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -138,53 +153,90 @@ export default function SkillCertPanel({ technicianId, technicianName }: Props) 
     // TODO: backend file upload endpoint
     const formData = new FormData();
     formData.append('file', file);
-    const { file_url } = await http.post<{ file_url: string }>('/uploads', formData);
+    const { data } = await http.post<{ file_url: string }>('/uploads', formData);
+    const { file_url } = data;
     setNewCert(prev => ({ ...prev, cert_file_url: file_url, cert_file_name: file.name }));
     setUploading(false);
   };
 
-  const handleSkillChange = (skillId: string) => {
-    const skill = skills.find(s => s.id === skillId);
-    setNewCert(prev => ({ ...prev, skill_id: skillId, skill_name: skill?.name || '' }));
-  };
-
-  const syncApprovedSkills = async () => {
-    const allCerts = await entities.MemberSkillCert.filter({ technician_id: technicianId });
-    const approved = allCerts.filter(c => c.status === 'approved').map(c => c.skill_name);
-    await entities.Technician.update(technicianId, { skills: approved });
-    qc.invalidateQueries({ queryKey: ['technicians'] });
+  const toggleSkill = (skillId: string) => {
+    setNewCert((prev) => {
+      const exists = prev.skill_ids.includes(skillId);
+      return {
+        ...prev,
+        skill_ids: exists
+          ? prev.skill_ids.filter((id) => id !== skillId)
+          : [...prev.skill_ids, skillId],
+      };
+    });
   };
 
   const handleAdd = async () => {
-    if (!newCert.skill_id) return;
+    if (newCert.skill_ids.length === 0) return;
     setAdding(true);
-    await entities.MemberSkillCert.create({
-      technician_id: technicianId,
-      technician_name: technicianName,
-      skill_id: newCert.skill_id,
-      skill_name: newCert.skill_name,
-      cert_file_url: newCert.cert_file_url,
-      cert_file_name: newCert.cert_file_name,
-      issued_date: newCert.issued_date,
-      expiry_date: newCert.expiry_date,
-      status: 'pending',
-    } as Partial<MemberSkillCert>);
-    setNewCert({ skill_id: '', skill_name: '', issued_date: '', expiry_date: '', cert_file_url: '', cert_file_name: '' });
-    setAdding(false);
-    refresh();
-    syncApprovedSkills();
+    try {
+      const selectedSkills = availableSkills.filter((s) => newCert.skill_ids.includes(s.id));
+      for (const skill of selectedSkills) {
+        await entities.MemberSkillCert.create({
+          technician_id: technicianId,
+          technician_name: technicianName,
+          skill_id: skill.id,
+          skill_name: skill.name,
+          cert_file_url: newCert.cert_file_url || undefined,
+          cert_file_name: newCert.cert_file_name || undefined,
+          issued_date: toIsoDateStart(newCert.issued_date),
+          expiry_date: toIsoDateStart(newCert.expiry_date),
+          status: 'pending',
+        } as Partial<MemberSkillCert>);
+      }
+      setNewCert({ skill_ids: [], issued_date: '', expiry_date: '', cert_file_url: '', cert_file_name: '' });
+      await refresh();
+      toast.success(`Submitted ${selectedSkills.length} skill certification(s)`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to submit skills';
+      toast.error(message);
+    } finally {
+      setAdding(false);
+    }
   };
 
   const handleStatusChange = async (certId: string, status: MemberSkillCertStatus) => {
-    await entities.MemberSkillCert.update(certId, { status });
-    refresh();
-    syncApprovedSkills();
+    try {
+      await entities.MemberSkillCert.update(certId, { status });
+      await refresh();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update cert status';
+      toast.error(message);
+    }
   };
 
   const handleDelete = async (certId: string) => {
-    await entities.MemberSkillCert.delete(certId);
-    refresh();
-    syncApprovedSkills();
+    try {
+      await entities.MemberSkillCert.delete(certId);
+      await refresh();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to delete cert';
+      toast.error(message);
+    }
+  };
+
+  const handleRemoveTechnicianSkill = async (skillName: string) => {
+    try {
+      const current = Array.isArray(technician?.skills) ? technician.skills : [];
+      const nextSkills = current.filter((s) => s !== skillName);
+      await entities.Technician.update(technicianId, { skills: nextSkills });
+      // Also remove matching cert rows (if any) so UI data stays consistent.
+      const related = certs.filter((c) => c.skill_name === skillName);
+      for (const cert of related) {
+        await entities.MemberSkillCert.delete(cert.id);
+      }
+      await qc.invalidateQueries({ queryKey: ['technician', technicianId] });
+      await refresh();
+      toast.success(`Removed "${skillName}"`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to remove skill';
+      toast.error(message);
+    }
   };
 
   const existingSkillIds = new Set(certs.map(c => c.skill_id));
@@ -228,6 +280,27 @@ export default function SkillCertPanel({ technicianId, technicianName }: Props) 
         )}
       </div>
 
+      {(technician?.skills?.length ?? 0) > 0 && (
+        <div className="border rounded-lg p-3 space-y-2">
+          <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Current Skills</p>
+          <div className="flex flex-wrap gap-1.5">
+            {technician?.skills?.map((skill) => (
+              <button
+                key={skill}
+                type="button"
+                onClick={() => handleRemoveTechnicianSkill(skill)}
+                className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+                title={`Remove ${skill}`}
+              >
+                <X className="w-3 h-3" />
+                {skill}
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] text-slate-500">Click a skill chip to remove it from member profile.</p>
+        </div>
+      )}
+
       <div className="border-t pt-4 space-y-3">
         <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide flex items-center gap-1.5">
           <Plus className="w-3.5 h-3.5" /> Add Skill Certification
@@ -235,19 +308,33 @@ export default function SkillCertPanel({ technicianId, technicianName }: Props) 
         <div className="grid grid-cols-2 gap-2">
           <div className="col-span-2">
             <Label className="text-xs">Skill <span className="text-red-500">*</span></Label>
-            <Select value={newCert.skill_id} onValueChange={handleSkillChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select skill..." />
-              </SelectTrigger>
-              <SelectContent>
-                {availableSkills.length === 0
-                  ? <SelectItem value="__none__" disabled>All skills already added</SelectItem>
-                  : availableSkills.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))
-                }
-              </SelectContent>
-            </Select>
+            {availableSkills.length === 0 ? (
+              <div className="text-xs text-slate-400 border rounded-md p-2">All skills already added</div>
+            ) : (
+              <div className="border rounded-md p-2 space-y-2 max-h-36 overflow-y-auto">
+                {availableSkills.map((s) => {
+                  const isSelected = newCert.skill_ids.includes(s.id);
+                  return (
+                    <button
+                      type="button"
+                      key={s.id}
+                      onClick={() => toggleSkill(s.id)}
+                      className={`w-full flex items-center gap-2 text-left text-sm rounded px-2 py-1.5 transition ${
+                        isSelected
+                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                          : 'hover:bg-slate-50 border border-transparent'
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-slate-300'}`}>
+                        {isSelected && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <span>{s.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <p className="text-[11px] text-slate-500 mt-1">{newCert.skill_ids.length} skill(s) selected</p>
           </div>
           <div>
             <Label className="text-xs">Issued Date</Label>
@@ -289,10 +376,10 @@ export default function SkillCertPanel({ technicianId, technicianName }: Props) 
           className="w-full"
           size="sm"
           onClick={handleAdd}
-          disabled={adding || !newCert.skill_id}
+          disabled={adding || newCert.skill_ids.length === 0}
         >
           {adding ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Plus className="w-4 h-4 mr-1.5" />}
-          Submit for Review
+          Submit for Review ({newCert.skill_ids.length})
         </Button>
       </div>
 
@@ -300,7 +387,9 @@ export default function SkillCertPanel({ technicianId, technicianName }: Props) 
         <BulkSkillImport
           open={showBulk}
           onClose={() => setShowBulk(false)}
-          onDone={refresh}
+          onDone={() => {
+            void refresh();
+          }}
           technicianId={technicianId}
           technicianName={technicianName}
         />

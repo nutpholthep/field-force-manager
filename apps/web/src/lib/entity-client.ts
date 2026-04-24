@@ -1,7 +1,7 @@
 import { http } from './api';
 
 export interface EntityClient<T> {
-  list(sort?: string, limit?: number, offset?: number): Promise<T[]>;
+  list(sort?: string, limit?: number, offset?: number, where?: Record<string, unknown>): Promise<T[]>;
   filter(where: Record<string, unknown>, sort?: string, limit?: number): Promise<T[]>;
   findById(id: string): Promise<T>;
   create(data: Partial<T>): Promise<T>;
@@ -25,9 +25,9 @@ function buildListParams(
 
 function createEntityClient<T>(path: string): EntityClient<T> {
   return {
-    async list(sort, limit = 100, offset = 0) {
+    async list(sort, limit = 100, offset = 0, where) {
       const { data } = await http.get<T[]>(`/${path}`, {
-        params: buildListParams(sort, limit, offset),
+        params: buildListParams(sort, limit, offset, where),
       });
       return data;
     },

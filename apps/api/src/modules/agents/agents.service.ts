@@ -3,29 +3,30 @@ import { AIAgent } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 import { CreateAgentDto, UpdateAgentDto } from './dto/agent.dto';
-import { parseSort } from '../../common/utils/query.util';
+import { parseSort, withActiveWhere } from '../../common/utils/query.util';
 
 
 @Injectable()
 export class AgentsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(opts: { sort?: string; limit?: number; offset?: number; where?: Record<string, unknown> } = {}): Promise<AIAgent[]> {
-    const { sort, limit = 100, offset = 0, where } = opts;
+  async list(opts: { sort?: string; limit?: number; offset?: number; where?: Record<string, unknown>; includeInactive?: boolean } = {}): Promise<AIAgent[]> {
+    const { sort, limit = 100, offset = 0, where, includeInactive = false } = opts;
+    const effectiveWhere = withActiveWhere(where, includeInactive);
     return this.prisma.aIAgent.findMany({
-      where,
+      where: effectiveWhere,
       orderBy: parseSort(sort) ?? { created_date: 'desc' },
       take: Math.min(Math.max(limit, 1), 1000),
       skip: offset,
     }) as unknown as Promise<AIAgent[]>;
   }
 
-  async count(where?: Record<string, unknown>): Promise<number> {
-    return this.prisma.aIAgent.count({ where });
+  async count(where?: Record<string, unknown>, includeInactive = false): Promise<number> {
+    return this.prisma.aIAgent.count({ where: withActiveWhere(where, includeInactive) });
   }
 
   async findById(id: string): Promise<AIAgent> {
-    const result = await this.prisma.aIAgent.findUnique({ where: { id } as any });
+    const result = await this.prisma.aIAgent.findFirst({ where: withActiveWhere({ id }, false) as any });
     if (!result) throw new NotFoundException(`Agents ${id} not found`);
     return result as unknown as AIAgent;
   }
@@ -39,6 +40,6 @@ export class AgentsService {
   }
 
   async remove(id: string): Promise<AIAgent> {
-    return this.prisma.aIAgent.delete({ where: { id } as any }) as unknown as AIAgent;
+    return this.prisma.aIAgent.update({ where: { id } as any, data: { is_active: false } as any }) as unknown as AIAgent;
   }
 }

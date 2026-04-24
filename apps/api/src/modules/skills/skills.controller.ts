@@ -11,7 +11,8 @@ import { CreateSkillDto, UpdateSkillDto } from './dto/skill.dto';
 export class SkillsController {
   constructor(private readonly service: SkillsService) {}
   @Get() list(@Query() q: ListQueryDto) {
-    return this.service.list({ sort: q.sort, limit: q.limit, offset: q.offset, where: parseWhere(q.where) });
+    return this.service.list({ sort: q.sort, limit: q.limit, offset: q.offset, where: parseWhere(q.where),
+      includeInactive: q.include_inactive });
   }
   @Get(':id') findOne(@Param('id') id: string) { return this.service.findById(id); }
   @Post() create(@Body() dto: CreateSkillDto) { return this.service.create(dto); }

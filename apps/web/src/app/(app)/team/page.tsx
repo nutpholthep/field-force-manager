@@ -21,10 +21,22 @@ export default function TeamPage() {
   const [editData, setEditData] = useState<Technician | null>(null);
   const [showRoles, setShowRoles] = useState(false);
   const queryClient = useQueryClient();
+  const normalizedSearch = search.trim();
 
   const { data: members = [], isLoading } = useQuery<Technician[]>({
-    queryKey: ['technicians'],
-    queryFn: () => entities.Technician.list('-created_date', 200),
+    queryKey: ['technicians', normalizedSearch, statusFilter],
+    queryFn: () => {
+      const where: Record<string, unknown> = {};
+      if (normalizedSearch) {
+        where.OR = [
+          { full_name: { contains: normalizedSearch, mode: 'insensitive' } },
+          { technician_code: { contains: normalizedSearch, mode: 'insensitive' } },
+          { email: { contains: normalizedSearch, mode: 'insensitive' } },
+        ];
+      }
+      if (statusFilter !== 'all') where.status = statusFilter;
+      return entities.Technician.filter(where, '-created_date', 200);
+    },
   });
 
   const { data: roles = [] } = useQuery<TeamRole[]>({
@@ -32,15 +44,7 @@ export default function TeamPage() {
     queryFn: () => entities.TeamRole.list('name', 100),
   });
 
-  const filtered = members.filter((m) => {
-    const matchSearch =
-      !search ||
-      m.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-      m.technician_code?.toLowerCase().includes(search.toLowerCase()) ||
-      m.email?.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === 'all' || m.status === statusFilter;
-    return matchSearch && matchStatus;
-  });
+  const filtered = members;
 
   const supervisors = filtered.filter((m) => m.team_role === 'supervisor');
   const engineers = filtered.filter((m) => m.team_role === 'engineer');

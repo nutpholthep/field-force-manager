@@ -11,7 +11,8 @@ import { CreateStuckReasonDto, UpdateStuckReasonDto } from './dto/stuck-reason.d
 export class StuckReasonsController {
   constructor(private readonly service: StuckReasonsService) {}
   @Get() list(@Query() q: ListQueryDto) {
-    return this.service.list({ sort: q.sort, limit: q.limit, offset: q.offset, where: parseWhere(q.where) });
+    return this.service.list({ sort: q.sort, limit: q.limit, offset: q.offset, where: parseWhere(q.where),
+      includeInactive: q.include_inactive });
   }
   @Get(':id') findOne(@Param('id') id: string) { return this.service.findById(id); }
   @Post() create(@Body() dto: CreateStuckReasonDto) { return this.service.create(dto); }

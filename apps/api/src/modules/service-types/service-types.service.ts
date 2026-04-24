@@ -3,29 +3,30 @@ import { ServiceType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 import { CreateServiceTypeDto, UpdateServiceTypeDto } from './dto/service-type.dto';
-import { parseSort } from '../../common/utils/query.util';
+import { parseSort, withActiveWhere } from '../../common/utils/query.util';
 
 
 @Injectable()
 export class ServiceTypesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(opts: { sort?: string; limit?: number; offset?: number; where?: Record<string, unknown> } = {}): Promise<ServiceType[]> {
-    const { sort, limit = 100, offset = 0, where } = opts;
+  async list(opts: { sort?: string; limit?: number; offset?: number; where?: Record<string, unknown>; includeInactive?: boolean } = {}): Promise<ServiceType[]> {
+    const { sort, limit = 100, offset = 0, where, includeInactive = false } = opts;
+    const effectiveWhere = withActiveWhere(where, includeInactive);
     return this.prisma.serviceType.findMany({
-      where,
+      where: effectiveWhere,
       orderBy: parseSort(sort) ?? { created_date: 'desc' },
       take: Math.min(Math.max(limit, 1), 1000),
       skip: offset,
     }) as unknown as Promise<ServiceType[]>;
   }
 
-  async count(where?: Record<string, unknown>): Promise<number> {
-    return this.prisma.serviceType.count({ where });
+  async count(where?: Record<string, unknown>, includeInactive = false): Promise<number> {
+    return this.prisma.serviceType.count({ where: withActiveWhere(where, includeInactive) });
   }
 
   async findById(id: string): Promise<ServiceType> {
-    const result = await this.prisma.serviceType.findUnique({ where: { id } as any });
+    const result = await this.prisma.serviceType.findFirst({ where: withActiveWhere({ id }, false) as any });
     if (!result) throw new NotFoundException(`TypesService ${id} not found`);
     return result as unknown as ServiceType;
   }
@@ -39,6 +40,6 @@ export class ServiceTypesService {
   }
 
   async remove(id: string): Promise<ServiceType> {
-    return this.prisma.serviceType.delete({ where: { id } as any }) as unknown as ServiceType;
+    return this.prisma.serviceType.update({ where: { id } as any, data: { is_active: false } as any }) as unknown as ServiceType;
   }
 }

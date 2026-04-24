@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class ListQueryDto {
   @ApiPropertyOptional({ description: 'Sort string (e.g. "-created_date" or "name")' })
@@ -27,4 +27,10 @@ export class ListQueryDto {
   @IsOptional()
   @IsString()
   where?: string;
+
+  @ApiPropertyOptional({ description: 'Include inactive records' })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  include_inactive?: boolean = false;
 }

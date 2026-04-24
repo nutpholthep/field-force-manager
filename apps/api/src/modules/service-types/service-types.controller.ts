@@ -11,7 +11,8 @@ import { CreateServiceTypeDto, UpdateServiceTypeDto } from './dto/service-type.d
 export class ServiceTypesController {
   constructor(private readonly service: ServiceTypesService) {}
   @Get() list(@Query() q: ListQueryDto) {
-    return this.service.list({ sort: q.sort, limit: q.limit, offset: q.offset, where: parseWhere(q.where) });
+    return this.service.list({ sort: q.sort, limit: q.limit, offset: q.offset, where: parseWhere(q.where),
+      includeInactive: q.include_inactive });
   }
   @Get(':id') findOne(@Param('id') id: string) { return this.service.findById(id); }
   @Post() create(@Body() dto: CreateServiceTypeDto) { return this.service.create(dto); }

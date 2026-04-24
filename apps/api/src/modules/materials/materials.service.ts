@@ -3,29 +3,30 @@ import { Material } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 import { CreateMaterialDto, UpdateMaterialDto } from './dto/material.dto';
-import { parseSort } from '../../common/utils/query.util';
+import { parseSort, withActiveWhere } from '../../common/utils/query.util';
 
 
 @Injectable()
 export class MaterialsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(opts: { sort?: string; limit?: number; offset?: number; where?: Record<string, unknown> } = {}): Promise<Material[]> {
-    const { sort, limit = 100, offset = 0, where } = opts;
+  async list(opts: { sort?: string; limit?: number; offset?: number; where?: Record<string, unknown>; includeInactive?: boolean } = {}): Promise<Material[]> {
+    const { sort, limit = 100, offset = 0, where, includeInactive = false } = opts;
+    const effectiveWhere = withActiveWhere(where, includeInactive);
     return this.prisma.material.findMany({
-      where,
+      where: effectiveWhere,
       orderBy: parseSort(sort) ?? { created_date: 'desc' },
       take: Math.min(Math.max(limit, 1), 1000),
       skip: offset,
     }) as unknown as Promise<Material[]>;
   }
 
-  async count(where?: Record<string, unknown>): Promise<number> {
-    return this.prisma.material.count({ where });
+  async count(where?: Record<string, unknown>, includeInactive = false): Promise<number> {
+    return this.prisma.material.count({ where: withActiveWhere(where, includeInactive) });
   }
 
   async findById(id: string): Promise<Material> {
-    const result = await this.prisma.material.findUnique({ where: { id } as any });
+    const result = await this.prisma.material.findFirst({ where: withActiveWhere({ id }, false) as any });
     if (!result) throw new NotFoundException(`Materials ${id} not found`);
     return result as unknown as Material;
   }
@@ -39,6 +40,6 @@ export class MaterialsService {
   }
 
   async remove(id: string): Promise<Material> {
-    return this.prisma.material.delete({ where: { id } as any }) as unknown as Material;
+    return this.prisma.material.update({ where: { id } as any, data: { is_active: false } as any }) as unknown as Material;
   }
 }

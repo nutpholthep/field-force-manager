@@ -3,29 +3,30 @@ import { Workflow } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 import { CreateWorkflowDto, UpdateWorkflowDto } from './dto/workflow.dto';
-import { parseSort } from '../../common/utils/query.util';
+import { parseSort, withActiveWhere } from '../../common/utils/query.util';
 
 
 @Injectable()
 export class WorkflowsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(opts: { sort?: string; limit?: number; offset?: number; where?: Record<string, unknown> } = {}): Promise<Workflow[]> {
-    const { sort, limit = 100, offset = 0, where } = opts;
+  async list(opts: { sort?: string; limit?: number; offset?: number; where?: Record<string, unknown>; includeInactive?: boolean } = {}): Promise<Workflow[]> {
+    const { sort, limit = 100, offset = 0, where, includeInactive = false } = opts;
+    const effectiveWhere = withActiveWhere(where, includeInactive);
     return this.prisma.workflow.findMany({
-      where,
+      where: effectiveWhere,
       orderBy: parseSort(sort) ?? { created_date: 'desc' },
       take: Math.min(Math.max(limit, 1), 1000),
       skip: offset,
     }) as unknown as Promise<Workflow[]>;
   }
 
-  async count(where?: Record<string, unknown>): Promise<number> {
-    return this.prisma.workflow.count({ where });
+  async count(where?: Record<string, unknown>, includeInactive = false): Promise<number> {
+    return this.prisma.workflow.count({ where: withActiveWhere(where, includeInactive) });
   }
 
   async findById(id: string): Promise<Workflow> {
-    const result = await this.prisma.workflow.findUnique({ where: { id } as any });
+    const result = await this.prisma.workflow.findFirst({ where: withActiveWhere({ id }, false) as any });
     if (!result) throw new NotFoundException(`Workflows ${id} not found`);
     return result as unknown as Workflow;
   }
@@ -39,6 +40,6 @@ export class WorkflowsService {
   }
 
   async remove(id: string): Promise<Workflow> {
-    return this.prisma.workflow.delete({ where: { id } as any }) as unknown as Workflow;
+    return this.prisma.workflow.update({ where: { id } as any, data: { is_active: false } as any }) as unknown as Workflow;
   }
 }

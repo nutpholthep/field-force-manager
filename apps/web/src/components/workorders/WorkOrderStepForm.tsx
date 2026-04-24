@@ -611,7 +611,8 @@ export default function WorkOrderStepForm({ open, onClose, workOrder, serviceTyp
     // TODO: backend file upload endpoint
     const formData = new FormData();
     formData.append('file', file);
-    const { file_url } = await http.post<{ file_url: string }>('/uploads', formData);
+    const { data } = await http.post<{ file_url: string }>('/uploads', formData);
+    const { file_url } = data;
     setAnswer(key, { file_url, file_name: file.name });
     setUploadingKey(null);
   };

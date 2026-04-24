@@ -37,3 +37,6 @@ apps/api/prisma/migrations/dev.db*
 *.tsbuildinfo
 coverage
 .cache
+
+# API local uploads
+apps/api/storage/
